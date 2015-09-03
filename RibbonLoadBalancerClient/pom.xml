@@ -30,6 +30,11 @@
             <version>${ribbon.version}</version>
         </dependency>
         <dependency>
+            <groupId>com.netflix.ribbon</groupId>
+            <artifactId>ribbon-core</artifactId>
+            <version>${ribbon.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.netflix.rxjava</groupId>
             <artifactId>rxjava-core</artifactId>
         </dependency>

@@ -5,14 +5,18 @@ package com.gooddata.client.ribbon;
 
 import static java.util.Arrays.asList;
 
+import java.net.URI;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.netflix.loadbalancer.ILoadBalancer;
+import com.netflix.loadbalancer.IPing;
 import com.netflix.loadbalancer.LoadBalancerBuilder;
 import com.netflix.loadbalancer.Server;
 
@@ -21,8 +25,12 @@ public class Main {
     private final RestTemplate restTemplate;
 
     public Main() {
-        ILoadBalancer loadBalancer  = LoadBalancerBuilder.newBuilder().buildFixedServerListLoadBalancer(asList(new Server("localhost:8080"), new Server("localhost:8070")));
-        restTemplate = new RestTemplate(new SimpleRibbonClientHttpRequestFactoryWrapper(new SimpleClientHttpRequestFactory(), loadBalancer));
+        SimpleClientHttpRequestFactory wrappedFactory = new SimpleClientHttpRequestFactory();
+        ILoadBalancer loadBalancer  = LoadBalancerBuilder.newBuilder()
+                .withPing(new RestTemplatePing(wrappedFactory))
+                .buildFixedServerListLoadBalancer(asList(new Server("localhost:8080"), new Server("localhost:8070")));
+
+        restTemplate = new RestTemplate(new SimpleRibbonClientHttpRequestFactoryWrapper(wrappedFactory, loadBalancer));
     }
 
     public void run() throws InterruptedException {
@@ -48,5 +56,32 @@ public class Main {
 
     public static void main(String[] args) throws InterruptedException {
         new Main().run();
+    }
+
+    private class RestTemplatePing implements IPing {
+        private final String pingPath = "/message";
+
+        private final RestTemplate restTemplate;
+
+        public RestTemplatePing(SimpleClientHttpRequestFactory wrappedFactory) {
+            this.restTemplate = new RestTemplate(wrappedFactory);
+        }
+
+        @Override
+        public boolean isAlive(Server server) {
+            URI uri = UriComponentsBuilder
+                    .fromPath(pingPath)
+                    .host(server.getHost())
+                    .port(server.getPort())
+                    .scheme("http")
+                    .build().toUri();
+            try {
+                log.info("Ping {}:{}", server.getHost(), server.getPort());
+                restTemplate.getForEntity(uri, Void.class);
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
     }
 }
