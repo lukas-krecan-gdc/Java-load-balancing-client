@@ -21,6 +21,7 @@
     <modules>
         <module>JavaLoadBalancerServer</module>
         <module>JavaLoadBalancerClient</module>
+        <module>RibbonLoadBalancerClient</module>
         <module>JavaHystrixClient</module>
     </modules>
 
